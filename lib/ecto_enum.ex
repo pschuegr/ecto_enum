@@ -71,8 +71,7 @@ defmodule EctoEnum do
         def type, do: :integer
 
         def cast(term) do
-          check_value!(term)
-          EctoEnum.cast(term, @enum_map)
+          check_value!(term) || EctoEnum.cast(term, @enum_map)
         end
 
         def load(int) when is_integer(int) do
@@ -90,19 +89,19 @@ defmodule EctoEnum do
 
         defp check_value!(atom) when is_atom(atom) do
           unless @enum_kw[atom] do
-            raise EctoEnum.Error, atom
+            :error
           end
         end
 
         defp check_value!(string) when is_binary(string) do
           unless @enum_map_string[string] do
-            raise EctoEnum.Error, string
+            :error
           end
         end
 
         defp check_value!(int) when is_integer(int) do
           unless @enum_map[int] do
-            raise EctoEnum.Error, int
+            :error
           end
         end
       end

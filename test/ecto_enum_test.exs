@@ -1,6 +1,12 @@
 defmodule EctoEnumTest do
   use ExUnit.Case
 
+  alias Ecto.Integration.TestRepo
+
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(TestRepo)
+  end
+
   import Ecto.Changeset
   import EctoEnum
   defenum StatusEnum, registered: 0, active: 1, inactive: 2, archived: 3
@@ -11,9 +17,12 @@ defmodule EctoEnumTest do
     schema "users" do
       field :status, StatusEnum
     end
-  end
 
-  alias Ecto.Integration.TestRepo
+    def changeset(struct, params \\ %{}) do
+      struct
+      |> cast(params, [:status])
+    end
+  end
 
   test "accepts int, atom and string on save" do
     user = TestRepo.insert!(%User{status: 0})
@@ -47,29 +56,29 @@ defmodule EctoEnumTest do
     assert changes.status == :inactive
   end
 
-  test "raises when input is not in the enum map" do
-    assert_raise Elixir.EctoEnum.Error, fn ->
-      cast(%User{}, %{"status" => "retroactive"}, ~w(status), [])
+  test "returns invalid changeset when input is not in the enum map" do
+    refute cast(%User{}, %{"status" => "retroactive"}, ~w(status), []).valid?
+
+    refute cast(%User{}, %{"status" => :retroactive}, ~w(status), []).valid?
+
+    refute cast(%User{}, %{"status" => 4}, ~w(status), []).valid?
+  end
+
+  test "changesets are invalid when input is not in the enum map" do
+    assert_raise Ecto.InvalidChangesetError, fn ->
+      changeset = User.changeset(%User{}, %{status: "retroactive"})
+
+      TestRepo.insert!(changeset)
     end
 
-    assert_raise Elixir.EctoEnum.Error, fn ->
-      cast(%User{}, %{"status" => :retroactive}, ~w(status), [])
+    assert_raise Ecto.InvalidChangesetError, fn ->
+      changeset = User.changeset(%User{}, %{status: :retroactive})
+      TestRepo.insert!(changeset)
     end
 
-    assert_raise Elixir.EctoEnum.Error, fn ->
-      cast(%User{}, %{"status" => 4}, ~w(status), [])
-    end
-
-    assert_raise Elixir.EctoEnum.Error, fn ->
-      TestRepo.insert!(%User{status: "retroactive"})
-    end
-
-    assert_raise Elixir.EctoEnum.Error, fn ->
-      TestRepo.insert!(%User{status: :retroactive})
-    end
-
-    assert_raise Elixir.EctoEnum.Error, fn ->
-      TestRepo.insert!(%User{status: 5})
+    assert_raise Ecto.InvalidChangesetError, fn ->
+      changeset = User.changeset(%User{}, %{status: 5})
+      TestRepo.insert!(changeset)
     end
   end
 
